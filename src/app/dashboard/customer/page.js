@@ -49,6 +49,9 @@ export default function CustomerDashboard() {
   // Simulation of real-time status updates
   useEffect(() => {
     if (!activeRequest) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H1',location:'src/app/dashboard/customer/page.js:52',message:'Status effect entered',data:{requestId:activeRequest?.id,status:activeRequest?.status,hasMechanic:!!activeRequest?.mechanic},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     
     let timer;
     if (activeRequest.status === SERVICE_STATUS.SEARCHING) {
@@ -87,6 +90,9 @@ export default function CustomerDashboard() {
 
   const handleRequestSubmit = async (data) => {
     const location = useTrackingStore.getState().userLocation;
+    // #region agent log
+    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H2',location:'src/app/dashboard/customer/page.js:90',message:'Submitting request from customer dashboard',data:{hasLocation:Array.isArray(location),locationLength:Array.isArray(location)?location.length:null,issueTag:data?.issueTag,requestType:data?.requestType},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     await createRequest({
       ...data,
       customerLat: location[0],
@@ -97,16 +103,25 @@ export default function CustomerDashboard() {
   const handlePaymentInitiate = () => {
     // Capture mechanic info before payment completes and clears the request
     completedMechanicRef.current = activeRequest?.mechanic?.name || "the professional";
+    // #region agent log
+    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H3',location:'src/app/dashboard/customer/page.js:101',message:'Payment initiated for completed request',data:{requestId:activeRequest?.id,status:activeRequest?.status,mechanicName:activeRequest?.mechanic?.name??null,refValue:completedMechanicRef.current},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     setIsPaymentOpen(true);
   };
 
   const handlePaymentSuccess = (paymentDetails) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H4',location:'src/app/dashboard/customer/page.js:107',message:'Payment success handler invoked',data:{requestId:activeRequest?.id,statusBeforeComplete:activeRequest?.status,paymentMethod:paymentDetails?.method,amount:paymentDetails?.amount},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     setIsPaymentOpen(false);
     completeRequest(paymentDetails);
     setIsReviewOpen(true);
   };
 
   const handleReviewSubmit = (reviewData) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H5',location:'src/app/dashboard/customer/page.js:114',message:'Review submit handler invoked',data:{rating:reviewData?.rating??null,commentLength:reviewData?.comment?.length??0,providerRefBeforeClear:completedMechanicRef.current},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     console.log("Review submitted", reviewData);
     setIsReviewOpen(false);
     completedMechanicRef.current = null;

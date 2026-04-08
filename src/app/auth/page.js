@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoginCard } from "../../components/auth/LoginCard";
 import { SignUpCard } from "../../components/auth/SignUpCard";
 
 export default function AuthPage() {
   const [isLoginView, setIsLoginView] = useState(true);
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H6',location:'src/app/auth/page.js:12',message:'Auth page mounted',data:{path:typeof window!=='undefined'?window.location.pathname:null},timestamp:Date.now()})}).catch(()=>{fetch('/api/debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H6',location:'src/app/auth/page.js:12',message:'Auth page mounted (proxy fallback)',data:{path:typeof window!=='undefined'?window.location.pathname:null},timestamp:Date.now()})}).catch(()=>{});});
+    // #endregion
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">

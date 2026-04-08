@@ -23,8 +23,14 @@ export function LoginCard() {
 
   const onSubmit = async (data) => {
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H7',location:'src/components/auth/LoginCard.js:27',message:'Login submit triggered',data:{emailDomain:data?.email?.split?.("@")?.[1]??null,emailHasCustomer:data?.email?.includes?.("customer")??false},timestamp:Date.now()})}).catch(()=>{fetch('/api/debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H7',location:'src/components/auth/LoginCard.js:27',message:'Login submit triggered (proxy fallback)',data:{emailDomain:data?.email?.split?.("@")?.[1]??null,emailHasCustomer:data?.email?.includes?.("customer")??false},timestamp:Date.now()})}).catch(()=>{});});
+      // #endregion
       const user = await login(data.email, data.password);
       if (user) {
+        // #region agent log
+        fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H7',location:'src/components/auth/LoginCard.js:31',message:'Login successful, redirecting by role',data:{role:user?.role??null,redirect:user?.role==='admin'?'/admin':`/dashboard/${user?.role}`},timestamp:Date.now()})}).catch(()=>{fetch('/api/debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H7',location:'src/components/auth/LoginCard.js:31',message:'Login successful, redirecting by role (proxy fallback)',data:{role:user?.role??null,redirect:user?.role==='admin'?'/admin':`/dashboard/${user?.role}`},timestamp:Date.now()})}).catch(()=>{});});
+        // #endregion
         // Redirect based on role
         if (user.role === "admin") router.push("/admin");
         else router.push(`/dashboard/${user.role}`);
