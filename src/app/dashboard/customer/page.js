@@ -9,6 +9,7 @@ import { ServiceRequestPanel } from "../../../components/dashboard/ServiceReques
 import { ServiceStatusTracker } from "../../../components/dashboard/ServiceStatusTracker";
 import { PaymentModal } from "../../../components/dashboard/PaymentModal";
 import { ReviewModal } from "../../../components/dashboard/ReviewModal";
+import { ErrorBoundary } from "../../../components/ui/ErrorBoundary";
 import { LogOut, User } from "lucide-react";
 import { SERVICE_STATUS } from "../../../lib/constants";
 
@@ -49,9 +50,6 @@ export default function CustomerDashboard() {
   // Simulation of real-time status updates
   useEffect(() => {
     if (!activeRequest) return;
-    // #region agent log
-    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H1',location:'src/app/dashboard/customer/page.js:52',message:'Status effect entered',data:{requestId:activeRequest?.id,status:activeRequest?.status,hasMechanic:!!activeRequest?.mechanic},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     
     let timer;
     if (activeRequest.status === SERVICE_STATUS.SEARCHING) {
@@ -90,38 +88,26 @@ export default function CustomerDashboard() {
 
   const handleRequestSubmit = async (data) => {
     const location = useTrackingStore.getState().userLocation;
-    // #region agent log
-    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H2',location:'src/app/dashboard/customer/page.js:90',message:'Submitting request from customer dashboard',data:{hasLocation:Array.isArray(location),locationLength:Array.isArray(location)?location.length:null,issueTag:data?.issueTag,requestType:data?.requestType},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     await createRequest({
       ...data,
-      customerLat: location[0],
-      customerLng: location[1],
+      customerLat: Array.isArray(location) ? location[0] : null,
+      customerLng: Array.isArray(location) ? location[1] : null,
     });
   };
 
   const handlePaymentInitiate = () => {
     // Capture mechanic info before payment completes and clears the request
     completedMechanicRef.current = activeRequest?.mechanic?.name || "the professional";
-    // #region agent log
-    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H3',location:'src/app/dashboard/customer/page.js:101',message:'Payment initiated for completed request',data:{requestId:activeRequest?.id,status:activeRequest?.status,mechanicName:activeRequest?.mechanic?.name??null,refValue:completedMechanicRef.current},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     setIsPaymentOpen(true);
   };
 
   const handlePaymentSuccess = (paymentDetails) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H4',location:'src/app/dashboard/customer/page.js:107',message:'Payment success handler invoked',data:{requestId:activeRequest?.id,statusBeforeComplete:activeRequest?.status,paymentMethod:paymentDetails?.method,amount:paymentDetails?.amount},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     setIsPaymentOpen(false);
     completeRequest(paymentDetails);
     setIsReviewOpen(true);
   };
 
   const handleReviewSubmit = (reviewData) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7742/ingest/6df102a3-018b-4c90-a04c-3daa6827d6d1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ab7357'},body:JSON.stringify({sessionId:'ab7357',runId:'pre-fix',hypothesisId:'H5',location:'src/app/dashboard/customer/page.js:114',message:'Review submit handler invoked',data:{rating:reviewData?.rating??null,commentLength:reviewData?.comment?.length??0,providerRefBeforeClear:completedMechanicRef.current},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     console.log("Review submitted", reviewData);
     setIsReviewOpen(false);
     completedMechanicRef.current = null;
@@ -163,7 +149,9 @@ export default function CustomerDashboard() {
         
         {/* Left Side: Map */}
         <div className="lg:col-span-7 xl:col-span-8 rounded-2xl overflow-hidden relative shadow-2xl h-full min-h-[400px]">
-           <MapView />
+          <ErrorBoundary fallbackLabel="Live Map">
+            <MapView />
+          </ErrorBoundary>
            
            {/* Floating Map Label */}
            <div className="absolute top-4 left-4 z-[400] bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-xs font-semibold text-white flex items-center gap-2">
@@ -174,15 +162,17 @@ export default function CustomerDashboard() {
         
         {/* Right Side: Action Panel */}
         <div className="lg:col-span-5 xl:col-span-4 h-full flex flex-col min-h-[500px] lg:min-h-0 overflow-y-auto custom-scrollbar pr-1 lg:pr-0">
-          {!activeRequest ? (
-            <ServiceRequestPanel onSubmit={handleRequestSubmit} />
-          ) : (
-            <ServiceStatusTracker 
-              request={activeRequest} 
-              onComplete={handlePaymentInitiate}
-              onCancel={handleCancelRequest}
-            />
-          )}
+          <ErrorBoundary fallbackLabel="Service Panel">
+            {!activeRequest ? (
+              <ServiceRequestPanel onSubmit={handleRequestSubmit} />
+            ) : (
+              <ServiceStatusTracker 
+                request={activeRequest} 
+                onComplete={handlePaymentInitiate}
+                onCancel={handleCancelRequest}
+              />
+            )}
+          </ErrorBoundary>
         </div>
       </div>
 

@@ -86,7 +86,8 @@ export const connectWebSocket = (token) => {
 
     // Exponential backoff with max attempts
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      const delay = BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts);
+      // Add random jitter (0-1s) to prevent thundering herd on server restart
+      const delay = BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts) + Math.random() * 1000;
       reconnectAttempts++;
       console.log(`[WebSocket] Reconnecting in ${delay / 1000}s (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
       reconnectTimer = setTimeout(() => {

@@ -7,6 +7,7 @@ import { ProfileEditor } from "../../../components/mechanic/ProfileEditor";
 import { AvailabilityToggle } from "../../../components/mechanic/AvailabilityToggle";
 import { IncomingJobs } from "../../../components/mechanic/IncomingJobs";
 import { EarningsChart } from "../../../components/mechanic/EarningsChart";
+import { ErrorBoundary } from "../../../components/ui/ErrorBoundary";
 import { useAuthStore } from "../../../store/authStore";
 import { LogOut, Wrench } from "lucide-react";
 
@@ -66,24 +67,34 @@ export default function MechanicDashboard() {
           {/* Left Column (Profile & Earnings) */}
           <div className="lg:col-span-4 flex flex-col gap-6">
             <div className="h-auto">
-              <AvailabilityToggle />
+              <ErrorBoundary fallbackLabel="Availability Toggle">
+                <AvailabilityToggle />
+              </ErrorBoundary>
             </div>
             <div className="flex-1 min-h-[300px]">
-              <ProfileEditor />
+              <ErrorBoundary fallbackLabel="Profile Editor">
+                <ProfileEditor />
+              </ErrorBoundary>
             </div>
             <div className="h-[300px]">
-               <EarningsChart />
+              <ErrorBoundary fallbackLabel="Earnings Chart">
+                <EarningsChart />
+              </ErrorBoundary>
             </div>
           </div>
           
           {/* Middle/Right Column (Jobs & Map) */}
           <div className="lg:col-span-8 flex flex-col gap-6">
             <div className="flex-1 min-h-[400px]">
-              <IncomingJobs />
+              <ErrorBoundary fallbackLabel="Incoming Jobs">
+                <IncomingJobs />
+              </ErrorBoundary>
             </div>
             
             <div className="h-[300px] rounded-2xl overflow-hidden relative shadow-2xl border border-white/10">
-               <NavigationMap />
+              <ErrorBoundary fallbackLabel="Navigation Map">
+                <NavigationMap />
+              </ErrorBoundary>
                <div className="absolute top-4 left-4 z-[400] bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-xs font-semibold text-white flex items-center gap-2">
                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                  Navigation

@@ -140,6 +140,38 @@ export const useAuthStore = create(
         }
       },
 
+      updateProfile: async (profileData) => {
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) {
+          console.warn("updateProfile called without a logged-in user");
+          return null;
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          // Attempt actual backend update
+          const response = await api.patch("/auth/me", profileData);
+          if (response.data?.user) {
+            set({ user: response.data.user, isLoading: false });
+            return response.data.user;
+          }
+          // Response was 2xx but no user payload — fall through to local update
+          throw new Error("No user data in response");
+        } catch (error) {
+          console.warn("Backend updateProfile failed, updating local state.", error.message);
+          // Fallback to local store update if backend fails
+          try {
+            const updatedUser = { ...useAuthStore.getState().user, ...profileData };
+            set({ user: updatedUser, isLoading: false, error: null });
+            return updatedUser;
+          } catch (fallbackError) {
+            console.error("Failed to update local state:", fallbackError);
+            set({ isLoading: false });
+            return null;
+          }
+        }
+      },
+
       setUser: (user) => set({ user, isAuthenticated: !!user }),
     }),
     {

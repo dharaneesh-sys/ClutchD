@@ -1,4 +1,5 @@
 import json
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import UUID
@@ -18,6 +19,8 @@ from app.core.security import decode_token
 from app.db.session import AsyncSessionLocal
 from app.models.user import User
 from app.ws.manager import manager, push_location_update
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -54,90 +57,105 @@ async def health():
     return {"status": "ok"}
 
 
-@app.websocket("/ws")
-async def websocket_user(websocket: WebSocket, token: str | None = None):
+async def _authenticate_ws(token: str | None) -> User | None:
+    """Shared WebSocket authentication helper. Returns User or None."""
     if not token:
-        await websocket.close(code=4401)
-        return
+        return None
     payload = decode_token(token)
     if not payload or "sub" not in payload:
-        await websocket.close(code=4401)
-        return
+        return None
     try:
         uid = UUID(payload["sub"])
-    except ValueError:
-        await websocket.close(code=4401)
-        return
+    except (ValueError, TypeError):
+        return None
     async with AsyncSessionLocal() as db:
         r = await db.execute(select(User).where(User.id == uid, User.is_active.is_(True)))
-        user = r.scalar_one_or_none()
+        return r.scalar_one_or_none()
+
+
+@app.websocket("/ws")
+async def websocket_user(websocket: WebSocket, token: str | None = None):
+    user = await _authenticate_ws(token)
     if not user:
         await websocket.close(code=4401)
         return
+
     await manager.connect_user(str(user.id), websocket)
     try:
         while True:
             raw = await websocket.receive_text()
+
+            # Wrap ALL message processing in try/except so a single bad
+            # message never kills the WebSocket loop.
             try:
                 msg = json.loads(raw)
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, TypeError):
                 continue
+
+            if not isinstance(msg, dict):
+                continue
+
             if msg.get("type") == "MECHANIC_LOCATION" and user.role == "mechanic":
-                lat, lon = msg.get("lat"), msg.get("lon")
-                if lat is None or lon is None:
+                raw_lat, raw_lon = msg.get("lat"), msg.get("lon")
+                if raw_lat is None or raw_lon is None:
                     continue
-                from sqlalchemy import select as sa_select
+
+                # Validate coordinates are real numbers within physical bounds
+                try:
+                    lat = float(raw_lat)
+                    lon = float(raw_lon)
+                except (ValueError, TypeError):
+                    continue
+
+                if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                    continue
 
                 from app.models.job import Job
                 from app.models.mechanic import Mechanic
 
-                async with AsyncSessionLocal() as db:
-                    mr = await db.execute(sa_select(Mechanic).where(Mechanic.user_id == user.id))
-                    mech = mr.scalar_one_or_none()
-                    if not mech:
-                        continue
-                    mech.lat = float(lat)
-                    mech.lon = float(lon)
-                    await db.commit()
-                    jr = await db.execute(
-                        sa_select(Job).where(
-                            Job.assigned_mechanic_id == mech.id,
-                            Job.status.in_(("assigned", "en_route", "in_progress")),
+                try:
+                    async with AsyncSessionLocal() as db:
+                        mr = await db.execute(select(Mechanic).where(Mechanic.user_id == user.id))
+                        mech = mr.scalar_one_or_none()
+                        if not mech:
+                            continue
+                        mech.lat = lat
+                        mech.lon = lon
+                        await db.commit()
+                        jr = await db.execute(
+                            select(Job).where(
+                                Job.assigned_mechanic_id == mech.id,
+                                Job.status.in_(("assigned", "en_route", "in_progress")),
+                            )
                         )
-                    )
-                    for job in jr.scalars().all():
-                        await push_location_update(str(job.user_id), str(job.id), [float(lat), float(lon)])
+                        for job in jr.scalars().all():
+                            await push_location_update(str(job.user_id), str(job.id), [lat, lon])
+                except Exception:
+                    logger.exception("Error processing MECHANIC_LOCATION update")
+                    continue
+
     except WebSocketDisconnect:
         pass
+    except Exception:
+        # Catch any unexpected error so the server doesn't log an unhandled exception
+        logger.exception("Unexpected WebSocket error for user %s", user.id)
     finally:
         manager.disconnect_user(str(user.id), websocket)
 
 
 @app.websocket("/ws/tracking/{job_id}")
 async def websocket_tracking(websocket: WebSocket, job_id: str, token: str | None = None):
-    if not token:
-        await websocket.close(code=4401)
-        return
-    payload = decode_token(token)
-    if not payload or "sub" not in payload:
-        await websocket.close(code=4401)
-        return
-    try:
-        uid = UUID(payload["sub"])
-    except ValueError:
-        await websocket.close(code=4401)
-        return
-    async with AsyncSessionLocal() as db:
-        r = await db.execute(select(User).where(User.id == uid, User.is_active.is_(True)))
-        user = r.scalar_one_or_none()
+    user = await _authenticate_ws(token)
     if not user:
         await websocket.close(code=4401)
         return
+
     try:
         jid = UUID(job_id)
-    except ValueError:
+    except (ValueError, TypeError):
         await websocket.close(code=4400)
         return
+
     from app.services.job_service import get_job_for_user
 
     async with AsyncSessionLocal() as db:
@@ -145,11 +163,14 @@ async def websocket_tracking(websocket: WebSocket, job_id: str, token: str | Non
     if not job:
         await websocket.close(code=4403)
         return
+
     await manager.connect_job(job_id, websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         pass
+    except Exception:
+        logger.exception("Unexpected WebSocket tracking error for job %s", job_id)
     finally:
         manager.disconnect_job(job_id, websocket)

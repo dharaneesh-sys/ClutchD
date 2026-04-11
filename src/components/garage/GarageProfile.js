@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GlassCard } from "../ui/GlassCard";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -8,15 +8,49 @@ import { Building2, MapPin, Phone, Clock, Users } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 
 export function GarageProfile() {
-  const { user } = useAuthStore();
+  const { user, updateProfile } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Local state for form fields
+  const [name, setName] = useState(user?.name || "SpeedFix Auto Garage");
+  const [phone, setPhone] = useState(user?.phone || "9876543211");
+  const [location, setLocation] = useState(user?.location || "Saibaba Colony, Coimbatore, 641011");
+  const [operatingHours, setOperatingHours] = useState(user?.operatingHours || "8:00 AM - 9:00 PM");
+  const [mechanicCount, setMechanicCount] = useState(user?.mechanicCount || "8");
   const [services, setServices] = useState(user?.services || ["engine", "brakes", "ac", "electrical", "tires"]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync state if user changes externally
+  useEffect(() => {
+    if (user && !isEditing) {
+      setName(user.name || "");
+      setPhone(user.phone || "");
+      setLocation(user.location || "");
+      setOperatingHours(user.operatingHours || "");
+      setMechanicCount(user.mechanicCount || "0");
+      setServices(user.services || []);
+    }
+  }, [user, isEditing]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await updateProfile({
+      name,
+      phone,
+      location,
+      operatingHours,
+      mechanicCount,
+      services
+    });
+    setIsSaving(false);
+    setIsEditing(false);
+  };
 
   return (
     <GlassCard variant="strong" className="p-6 h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-white tracking-tight">Garage Profile</h2>
-        <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
+        <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)} disabled={isSaving}>
           {isEditing ? "Cancel" : "Edit Details"}
         </Button>
       </div>
@@ -34,7 +68,7 @@ export function GarageProfile() {
           <p className="text-emerald-100/60 text-sm">Managed by {user?.ownerName || "Suresh Patel"}</p>
           <div className="flex items-center gap-3 mt-2">
              <div className="flex items-center text-xs text-amber-400">
-               ⭐ 4.5 <span className="text-emerald-100/40 ml-1">(850+ jobs)</span>
+               ⭐ {user?.rating || "4.5"} <span className="text-emerald-100/40 ml-1">(850+ jobs)</span>
              </div>
              <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                Verified Partner
@@ -48,37 +82,42 @@ export function GarageProfile() {
           <Input 
             label="Garage Name" 
             icon={Building2} 
-            defaultValue={user?.name || "SpeedFix Auto Garage"} 
-            disabled={!isEditing} 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={!isEditing || isSaving} 
           />
           <Input 
             label="Contact Phone" 
             icon={Phone} 
-            defaultValue={user?.phone || "9876543211"} 
-            disabled={!isEditing} 
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            disabled={!isEditing || isSaving} 
           />
         </div>
         
         <Input 
           label="Location Address" 
           icon={MapPin} 
-          defaultValue={user?.location || "Saibaba Colony, Coimbatore, 641011"} 
-          disabled={!isEditing} 
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          disabled={!isEditing || isSaving} 
         />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input 
             label="Operating Hours" 
             icon={Clock} 
-            defaultValue={user?.operatingHours || "8:00 AM - 9:00 PM"} 
-            disabled={!isEditing} 
+            value={operatingHours}
+            onChange={(e) => setOperatingHours(e.target.value)}
+            disabled={!isEditing || isSaving} 
           />
           <Input 
             label="Staff Capacity" 
             icon={Users} 
             type="number"
-            defaultValue={user?.mechanicCount || "8"} 
-            disabled={!isEditing} 
+            value={mechanicCount}
+            onChange={(e) => setMechanicCount(e.target.value)}
+            disabled={!isEditing || isSaving} 
           />
         </div>
         
@@ -88,6 +127,7 @@ export function GarageProfile() {
             options={EXPERTISE_OPTIONS} 
             value={services} 
             onChange={setServices} 
+            disabled={isSaving}
           />
         ) : (
           <div>
@@ -108,7 +148,9 @@ export function GarageProfile() {
 
       {isEditing && (
         <div className="mt-6 pt-6 border-t border-white/5 flex justify-end">
-          <Button onClick={() => setIsEditing(false)}>Save Garage Details</Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save Garage Details"}
+          </Button>
         </div>
       )}
     </GlassCard>

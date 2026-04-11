@@ -7,6 +7,7 @@ import { LogOut, Building2 } from "lucide-react";
 import { GarageProfile } from "../../../components/garage/GarageProfile";
 import { GarageJobQueue } from "../../../components/garage/GarageJobQueue";
 import { GarageAnalytics } from "../../../components/garage/GarageAnalytics";
+import { ErrorBoundary } from "../../../components/ui/ErrorBoundary";
 
 export default function GarageDashboard() {
   const { user, logout, isAuthenticated } = useAuthStore();
@@ -55,17 +56,23 @@ export default function GarageDashboard() {
           {/* Left Column (Profile & Analytics) */}
           <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
             <div className="flex-1 min-h-[400px]">
-              <GarageProfile />
+              <ErrorBoundary fallbackLabel="Garage Profile">
+                <GarageProfile />
+              </ErrorBoundary>
             </div>
             <div className="h-[450px]">
-               <GarageAnalytics />
+              <ErrorBoundary fallbackLabel="Garage Analytics">
+                <GarageAnalytics />
+              </ErrorBoundary>
             </div>
           </div>
           
           {/* Middle/Right Column (Job Queue dispatching) */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
             <div className="flex-1 min-h-[800px]">
-              <GarageJobQueue />
+              <ErrorBoundary fallbackLabel="Job Queue">
+                <GarageJobQueue />
+              </ErrorBoundary>
             </div>
           </div>
           
